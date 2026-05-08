@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажер по математике</title>
+    
+    <!-- Скрипт для рендеринга LaTeX-формул -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- [НОВОЕ] Подключаем библиотеку math.js для правильного вычисления ответов -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js"></script>
+
+    <style>
+        :root {
+            --primary-bg: #f0f4f8;
+            --secondary-bg: #ffffff;
+            --header-bg: #4a6fa5;
+            --header-text: #ffffff;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-color: #334155;
+            --border-color: #cbd5e1;
+            --input-border: #94a3b8;
+            --correct-bg: #dcfce7;
+            --correct-border: #22c55e;
+            --incorrect-bg: #fee2e2;
+            --incorrect-border: #ef4444;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--secondary-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .header {
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+        .header p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+        }
+        .main-content {
+            padding: 25px;
+        }
+        .form-section, .variant-section, .results-section {
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+        }
+        .button {
+            display: inline-block;
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            color: #fff;
+            background-color: var(--accent-color);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        .button:hover {
+            background-color: var(--accent-hover);
+        }
+        .button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .variant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        #variant-title {
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+        #timer {
+            font-size: 1.2em;
+            font-weight: 600;
+            background-color: var(--primary-bg);
+            padding: 5px 12px;
+            border-radius: 6px;
+        }
+        .task {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+        .task.correct {
+            background-color: var(--correct-bg);
+            border-left: 5px solid var(--correct-border);
+        }
+        .task.incorrect {
+            background-color: var(--incorrect-bg);
+            border-left: 5px solid var(--incorrect-border);
+        }
+        .task p {
+            margin-top: 0;
+        }
+        .task .answer-input {
+            width: calc(100% - 24px); /* Full width minus padding */
+        }
+        .hidden {
+            display: none;
+        }
+        #results {
+            text-align: center;
+            padding: 20px;
+            background-color: var(--primary-bg);
+            border-radius: 8px;
+        }
+        #results h2 {
+            margin-top: 0;
+        }
+        #spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--accent-color);
+            animation: spin 1s ease infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .blur-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header class="header">
+            <h1>Тренажер по математике</h1>
+            <p>Решите задачи вашего варианта</p>
+        </header>
+
+        <main class="main-content">
+            <section id="user-info-section" class="form-section">
+                <div class="form-group">
+                    <label for="name">Фамилия и Имя</label>
+                    <input type="text" id="name" placeholder="Иванов Иван">
+                </div>
+                <div class="form-group">
+                    <label for="group">Группа</label>
+                    <input type="text" id="group" placeholder="ПРИ-101">
+                </div>
+                <button id="start-btn" class="button">Начать</button>
+            </section>
+
+            <section id="variant-section" class="variant-section hidden">
+                <div class="variant-header">
+                    <h2 id="variant-title"></h2>
+                    <div id="timer">30:00</div>
+                </div>
+                <div id="tasks-container"></div>
+                <button id="finish-btn" class="button">Завершить и проверить</button>
+            </section>
+            
+            <section id="results-section" class="results-section hidden">
+                <div id="results"></div>
+                <div id="spinner" class="hidden"></div>
+                <p id="sending-status"></p>
+            </section>
+        </main>
+    </div>
+    
+    <div id="blur-overlay" class="blur-overlay hidden">
+        <p>Вы покинули страницу.<br>Попытка списана!</p>
+    </div>
+
+
+    <script>
+        // !!! ВАЖНО: Сюда нужно вставить URL вашего веб-приложения Google Apps Script
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxf8ZIJYPDLs8k8CW-PFwVnxMowoBQ9aMi1NBegz0BIT6endjtVaL7YiM8rstKgHLo/exec';
+
+        // База данных с вариантами и задачами
+        const variantsData = [
+            {
+                variant: 1,
+                tasks: [
+                    { question: 'Вычислите интеграл: $$\\int_{0}^{1} (x^2+1) dx$$', answer: 4/3 },
+                    { question: 'Найдите производную функции $f(x) = \\sin(2x)$ в точке $x = \\frac{\\pi}{4}$', answer: 0 },
+                    { question: 'Решите уравнение: $$\\log_2(x) = 3$$', answer: 8 }
+                ]
+            },
+            {
+                variant: 2,
+                tasks: [
+                    { question: 'Вычислите определитель матрицы: $$\\begin{vmatrix} 2 & 1 \\\\ 3 & 4 \\end{vmatrix}$$', answer: 5 },
+                    { question: 'Найдите предел: $$\\lim_{x \\to \\infty} \\frac{2x^2+1}{x^2-x}$$', answer: 2 },
+                    { question: 'Чему равно значение $e^0$?', answer: 1 }
+                ]
+            },
+            {
+                variant: 3,
+                tasks: [
+                    { question: 'Вычислите интеграл: $$\\int_{0}^{e-1} \\frac{1}{x+1} dx$$', answer: 1 },
+                    { question: 'Найдите производную $f(x) = x \\ln(x)$ в точке $x=e$', answer: 2 },
+                    { question: 'Вычислите: $$\\cos(\\pi) + \\sin(\\frac{\\pi}{2})$$', answer: 0 }
+                ]
+            }
+        ];
+
+        // Глобальные переменные
+        let currentVariant;
+        let timerInterval;
+        let timeLeft = 30 * 60; // 30 минут в секундах
+        let cheatAttempts = 0;
+
+        // Элементы DOM
+        const userInfoSection = document.getElementById('user-info-section');
+        const variantSection = document.getElementById('variant-section');
+        const resultsSection = document.getElementById('results-section');
+        const startBtn = document.getElementById('start-btn');
+        const finishBtn = document.getElementById('finish-btn');
+        const nameInput = document.getElementById('name');
+        const groupInput = document.getElementById('group');
+        const tasksContainer = document.getElementById('tasks-container');
+        const variantTitle = document.getElementById('variant-title');
+        const timerDisplay = document.getElementById('timer');
+        const resultsDiv = document.getElementById('results');
+        const blurOverlay = document.getElementById('blur-overlay');
+
+        // Инициализация
+        startBtn.addEventListener('click', startTest);
+        finishBtn.addEventListener('click', finishTest);
+
+        // Обнаружение списывания (уход со страницы)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && variantSection.style.display !== 'none' && resultsSection.style.display === 'none') {
+                cheatAttempts++;
+                blurOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    blurOverlay.classList.add('hidden');
+                }, 2000); // Показываем сообщение на 2 секунды
+            }
+        });
+        
+        function startTest() {
+            if (nameInput.value.trim() === '' || groupInput.value.trim() === '') {
+                alert('Пожалуйста, введите ваше имя и группу.');
+                return;
+            }
+
+            // Случайный выбор варианта
+            const randomIndex = Math.floor(Math.random() * variantsData.length);
+            currentVariant = variantsData[randomIndex];
+
+            // Отображение секции с задачами
+            userInfoSection.classList.add('hidden');
+            variantSection.classList.remove('hidden');
+            variantTitle.textContent = `Вариант №${currentVariant.variant}`;
+
+            // Генерация задач
+            tasksContainer.innerHTML = '';
+            currentVariant.tasks.forEach((task, index) => {
+                const taskElement = document.createElement('div');
+                taskElement.classList.add('task');
+                taskElement.innerHTML = `
+                    <p><b>Задание ${index + 1}:</b> ${task.question}</p>
+                    <input type="text" class="answer-input" placeholder="Введите ваш ответ" data-task-index="${index}">
+                `;
+                tasksContainer.appendChild(taskElement);
+            });
+            MathJax.typeset(); // Обновляем рендеринг формул
+
+            // Запуск таймера
+            startTimer();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeLeft <= 0) {
+                    finishTest();
+                }
+            }, 1000);
+        }
+
+        function finishTest() {
+            clearInterval(timerInterval);
+            checkAnswers();
+        }
+        
+        // [ЗАМЕНЕНО] Новая, улучшенная функция проверки ответов с помощью math.js
+        function evaluateAnswer(userAnswer, correctAnswer) {
+            // Если поле пустое, сразу возвращаем false
+            if (!userAnswer || userAnswer.trim() === '') {
+                return false;
+            }
+
+            // Приводим ответ пользователя к стандартному виду: убираем пробелы, меняем запятые на точки
+            const normalizedUserAnswer = userAnswer.trim().replace(',', '.');
+            
+            // Допустимая погрешность для сравнения чисел
+            const EPS = 0.01;
+
+            try {
+                // Пытаемся вычислить математическое выражение, введенное пользователем
+                // Math.js понимает дроби (4/3), константы (pi, e) и функции.
+                const evaluatedUserValue = math.evaluate(normalizedUserAnswer);
+                
+                // Сравниваем результат вычисления с правильным ответом (который уже является числом)
+                return Math.abs(evaluatedUserValue - correctAnswer) < EPS;
+            } catch (error) {
+                // Если math.js не смог разобрать введенное значение (например, "привет"),
+                // считаем ответ неверным и выводим ошибку в консоль для отладки.
+                console.error("Ошибка вычисления ответа пользователя:", error);
+                return false;
+            }
+        }
+
+        function checkAnswers() {
+            const inputs = tasksContainer.querySelectorAll('.answer-input');
+            let correctAnswersCount = 0;
+
+            inputs.forEach(input => {
+                const taskIndex = parseInt(input.dataset.taskIndex, 10);
+                const userAnswer = input.value;
+                const correctAnswer = currentVariant.tasks[taskIndex].answer;
+                const taskElement = input.parentElement;
+                
+                if (evaluateAnswer(userAnswer, correctAnswer)) {
+                    correctAnswersCount++;
+                    taskElement.classList.remove('incorrect');
+                    taskElement.classList.add('correct');
+                } else {
+                    taskElement.classList.remove('correct');
+                    taskElement.classList.add('incorrect');
+                }
+                input.disabled = true; // Блокируем поля после проверки
+            });
+            
+            finishBtn.disabled = true; // Блокируем кнопку "Завершить"
+
+            // Отображение результатов
+            displayResults(correctAnswersCount);
+        }
+        
+        function getGrade(score, total) {
+            const percentage = (score / total) * 100;
+            if (percentage >= 90) return 5;
+            if (percentage >= 75) return 4;
+            if (percentage >= 50) return 3;
+            return 2;
+        }
+
+        function displayResults(score) {
+            variantSection.classList.add('hidden');
+            resultsSection.classList.remove('hidden');
+            
+            const totalTasks = currentVariant.tasks.length;
+            const grade = getGrade(score, totalTasks);
+            
+            resultsDiv.innerHTML = `
+                <h2>Результаты</h2>
+                <p><b>Студент:</b> ${nameInput.value}</p>
+                <p><b>Группа:</b> ${groupInput.value}</p>
+                <p><b>Вариант:</b> ${currentVariant.variant}</p>
+                <p><b>Правильных ответов:</b> ${score} из ${totalTasks}</p>
+                <p><b>Ваша оценка:</b> ${grade}</p>
+                <p><b>Попыток списать:</b> ${cheatAttempts}</p>
+            `;
+
+            // Отправка данных
+            const data = {
+                name: nameInput.value,
+                group: groupInput.value,
+                variant: currentVariant.variant,
+                score: `${score}/${totalTasks}`,
+                grade: grade,
+                cheatAttempts: cheatAttempts
+            };
+            sendDataToGoogleSheet(data);
+        }
+
+        async function sendDataToGoogleSheet(data) {
+            const spinner = document.getElementById('spinner');
+            const status = document.getElementById('sending-status');
+            
+            spinner.classList.remove('hidden');
+            status.textContent = 'Отправка результатов...';
+            
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Важно для обхода CORS политики при отправке в Google Script
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                // В режиме 'no-cors' мы не можем прочитать ответ сервера,
+                // поэтому просто считаем, что если ошибки не было, то все хорошо.
+                status.textContent = 'Результаты успешно отправлены!';
+                status.style.color = 'green';
+
+            } catch (error) {
+                console.error('Ошибка при отправке данных:', error);
+                status.textContent = 'Не удалось отправить результаты. Проверьте консоль.';
+                status.style.color = 'red';
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
